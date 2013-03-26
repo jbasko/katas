@@ -5,57 +5,65 @@
 from unittest.case import TestCase
 
 
-def append_line_to_lines(line, lines):
-    if len(line) > 0:
-            lines.append(line)
+class Wrapper(object):
+
+    @staticmethod
+    def wrap(string, width):
+        if len(string) <= width:
+            return string
+        raw_paragraphs = string.split("\n")
+        wrapped_paragraphs = [ParagraphWrapper(p, width).wrap() for p in raw_paragraphs]
+        return "\n".join(wrapped_paragraphs)
 
 
-def word_appended_to_line(word, line, lines, width):
-    if len(word) > width:
-        assert line == ''
-        lines.append(word[:width])
-        return word_appended_to_line(word[width:], line, lines, width)
+class ParagraphWrapper(object):
 
-    if line:
-        line += ' ' + word
-    else:
-        line += word
-    return line
+    def __init__(self, s, width):
+        self._string = s
+        self._width = width
+        self._lines = []
 
+    def add_line(self, line):
+        if len(line) > 0:
+            self._lines.append(line)
 
-def wrap_paragraph(s, width):
-    words = s.split(" ")
-    lines = []
-    line = ''
+    def word_appended_to_line(self, word, line):
+        if len(word) > self._width:
+            assert line == ''
+            self._lines.append(word[:self._width])
+            return self.word_appended_to_line(word[self._width:], line)
 
-    for word in words:
-        if len(line) + 1 + len(word) > width:
-            append_line_to_lines(line, lines)
-            line = ''
-            line = word_appended_to_line(word, line, lines, width)
+        if line:
+            line += ' ' + word
         else:
-            line = word_appended_to_line(word, line, lines, width)
+            line += word
+        return line
 
-    if line:
-        append_line_to_lines(line, lines)
+    def wrap(self):
+        words = self._string.split(" ")
+        self._lines = []
+        line = ''
 
-    return "\n".join(lines)
+        for word in words:
+            if len(line) + 1 + len(word) > self._width:
+                self.add_line(line)
+                line = ''
+                line = self.word_appended_to_line(word, line)
+            else:
+                line = self.word_appended_to_line(word, line)
 
+        if line:
+            self.add_line(line)
 
-def wrap(s, width):
-    if len(s) <= width:
-        return s
-
-    raw_paragraphs = s.split("\n")
-    wrapped_paragraphs = []
-    for paragraph in raw_paragraphs:
-        wrapped_paragraphs.append(wrap_paragraph(paragraph, width))
-    return "\n".join(wrapped_paragraphs)
+        return "\n".join(self._lines)
 
 
 class WrapTest(TestCase):
 
     def test_wrap(self):
+
+        wrap = Wrapper.wrap
+
         self.assertEqual("one\n"
                          "two\n"
                          "two",
