@@ -1,3 +1,7 @@
+"""
+    http://thecleancoder.blogspot.co.uk/2010/10/craftsman-62-dark-path.html
+    2013-03-26 evening
+"""
 from unittest.case import TestCase
 
 
