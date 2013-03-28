@@ -22,6 +22,10 @@
     (3, 4)
     >>> x[1]['start_time'], x[1]['end_time']
     (5, 6)
+    >>> records.append({'start_time': 9.5, 'end_time': 9.9})
+    >>> report = make_report(records)
+    >>> len(report['children'])
+    2
 """
 
 
@@ -42,7 +46,7 @@ def make_report(raw_records):
         else:
             # is a sibling of the previous record, must find parent
             # parent is the most recent previous record which has greater end_time
-            for j in range(i - 1, 0, -1):
+            for j in range(i - 1, -1, -1):
                 if records[j]['end_time'] > records[i]['end_time']:
                     records[j]['children'].append(records[i])
                     break
