@@ -2,12 +2,9 @@
     2013-03-28
     Decorator that allows profiling nested functions.
 """
-import collections
 from functools import wraps
 from unittest.case import TestCase
 import time
-
-ProfilerRecord = collections.namedtuple('ProfilerRecord', ['name', 'start_time', 'end_time'])
 
 
 class ProfilerRecord(object):
@@ -44,21 +41,24 @@ class Profiler(object):
 
         records = sorted(Profiler._records, key=record_start_time)
 
-        report = [records[0]]
-        for i in range(1, len(records)):
-            if records[i].start_time > report[-1].end_time:
-                # [i] is a sibling of current item in the report
-                report.append(records[i])
-            elif records[i].start_time > records[i - 1].end_time:
-                # [i] is a sibling of the previous record
-                report.append(records[i])
-            else:
-                # [i] is a child of the previous record
-                assert records[i].end_time < records[i - 1].end_time
-                records[i - 1].children.append(records[i])
-            pass
+        if len(records) == 1:
+            return records[0]
 
-        return report
+        root = records[0]
+        for i in range(1, len(records)):
+            if records[i].start_time < records[i - 1].end_time:
+                # Is a child of the previous record
+                records[i - 1].children.append(records[i])
+            else:
+                # Is a sibling of the previous record, must find the parent.
+                # Parent is the most recent previous record that
+                # has end_time larger than the end_time of the current record.
+                for j in range(i - 1, -1, -1):
+                    if records[j].end_time >= records[i].end_time:
+                        records[j].children.append(records[i])
+                        break
+
+        return root
 
 
 def profiled(f):
@@ -138,30 +138,10 @@ class ProfilerTest(TestCase):
 
         main_function()
 
-        #
-        # Example of the expected report:
-        #
-        # expected_report = [{
-        #     'name': 'main_function',
-        #     'start_time': 0.0,
-        #     'end_time': 0.0,
-        #     'children': [{
-        #         'name': 'sub_function_1',
-        #         'start_time': 0.0,
-        #         'end_time': 0.0
-        #     }, {
-        #         'name': 'sub_function_2',
-        #         'start_time': 0.0,
-        #         'end_time': 0.0
-        #     }]
-        # }]
-
         report = Profiler.get_report()
-        self.assertIsInstance(report, list)
-        self.assertEqual(1, len(report))
-        self.assertEqual('main_function', report[0].name)
-        self.assertLess(report[0].start_time, report[0].end_time)
-        print report
-        self.assertEqual(2, len(report[0].children))
-
-
+        self.assertIsInstance(report, ProfilerRecord)
+        self.assertEqual('main_function', report.name)
+        self.assertLess(report.start_time, report.end_time)
+        self.assertEqual(2, len(report.children))
+        self.assertEqual('sub_function_1', report.children[0].name)
+        self.assertEqual('sub_function_2', report.children[1].name)
