@@ -1,10 +1,31 @@
 """
     2013-03-28
     Decorator that allows profiling nested functions.
+
+    >>> @profiled
+    ... def greet_person(name, greeting='Hi!'):
+    ...     pass
+    >>>
+    >>> greet_person('Lucy', greeting='Hello')
+
+    >>> report = Profiler.get_report()
+    >>> len(report)
+    1
+    >>> report[0].name
+    'greet_person'
+    >>> report[0].func_args
+    ['Lucy']
+    >>> report[0].func_kwargs
+    {'greeting': 'Hello'}
+    >>> report[0].exception_raised
+    False
+
 """
 from functools import wraps
 from unittest.case import TestCase
 import time
+
+
 
 
 class ProfilerRecord(object):
