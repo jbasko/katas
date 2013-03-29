@@ -44,7 +44,7 @@ class Profiler(object):
         if len(records) == 1:
             return records[0]
 
-        root = records[0]
+        root = [records[0]]
         for i in range(1, len(records)):
             if records[i].start_time < records[i - 1].end_time:
                 # Is a child of the previous record
@@ -53,10 +53,14 @@ class Profiler(object):
                 # Is a sibling of the previous record, must find the parent.
                 # Parent is the most recent previous record that
                 # has end_time larger than the end_time of the current record.
+                parent_found = False
                 for j in range(i - 1, -1, -1):
                     if records[j].end_time >= records[i].end_time:
                         records[j].children.append(records[i])
+                        parent_found = True
                         break
+                if not parent_found:
+                    root.append(records[i])
 
         return root
 
@@ -139,9 +143,39 @@ class ProfilerTest(TestCase):
         main_function()
 
         report = Profiler.get_report()
-        self.assertIsInstance(report, ProfilerRecord)
-        self.assertEqual('main_function', report.name)
-        self.assertLess(report.start_time, report.end_time)
-        self.assertEqual(2, len(report.children))
-        self.assertEqual('sub_function_1', report.children[0].name)
-        self.assertEqual('sub_function_2', report.children[1].name)
+        self.assertIsInstance(report, list)
+        self.assertEqual(1, len(report))
+
+        root = report[0]
+        self.assertIsInstance(root, ProfilerRecord)
+        self.assertEqual('main_function', root.name)
+        self.assertLess(root.start_time, root.end_time)
+        self.assertEqual(2, len(root.children))
+        self.assertEqual('sub_function_1', root.children[0].name)
+        self.assertEqual('sub_function_2', root.children[1].name)
+
+    def test_two_unrelated_profiles(self):
+
+        @profiled
+        def function1():
+            pass
+
+        @profiled
+        def function2():
+            function2_sub()
+            pass
+
+        @profiled
+        def function2_sub():
+            pass
+
+        function1()
+        function2()
+
+        report = Profiler.get_report()
+        self.assertIsInstance(report, list)
+        self.assertEqual(2, len(report))
+        self.assertEqual('function1', report[0].name)
+        self.assertEqual('function2', report[1].name)
+        self.assertEqual(1, len(report[1].children))
+        self.assertEqual('function2_sub', report[1].children[0].name)
