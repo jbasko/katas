@@ -43,6 +43,12 @@ class Profiler(object):
         return Profiler._records
 
     @staticmethod
+    def flush_report():
+        report = Profiler.get_report()
+        Profiler._records = []
+        return report
+
+    @staticmethod
     def get_report():
 
         def record_start_time(profiler_record):
@@ -270,3 +276,29 @@ class ProfilerTest(TestCase):
 
         report = Profiler.get_report()
         self.assertEqual(1, len(report))
+
+    def test_profiler_can_be_flushed(self):
+
+        @profiled
+        def some_function(big_arg_in_memory=None):
+            pass
+
+        self.assertEqual(0, len(Profiler.get_report()))
+
+        some_function()
+        some_function()
+        some_function()
+
+        self.assertEqual(3, len(Profiler.get_report()))
+
+        flushed_report = Profiler.flush_report()
+        self.assertEqual(3, len(flushed_report))
+        self.assertEqual(0, len(Profiler.get_report()))
+
+        some_function()
+        new_report = Profiler.get_report()
+        self.assertEqual(1, len(new_report))
+
+        Profiler.flush_report()
+        self.assertEqual(0, len(Profiler.get_report()))
+
