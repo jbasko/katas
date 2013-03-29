@@ -15,8 +15,8 @@ class ProfilerRecord(object):
         self.start_time = start_time
         self.end_time = end_time
         self.children = []
-        self.func_args=func_args
-        self.func_kwargs=func_kwargs
+        self.func_args = [str(a) for a in func_args]
+        self.func_kwargs = {str(k): str(v) for k, v in func_kwargs.items()}
 
     def __repr__(self):
         args_repr = []
@@ -201,7 +201,7 @@ class ProfilerTest(TestCase):
         self.assertEqual(1, len(report[1].children))
         self.assertEqual('function2_sub', report[1].children[0].name)
 
-    def test_profile_includes_func_args(self):
+    def test_profile_includes_func_args_string_representations(self):
 
         @profiled
         def get_price(quantity):
@@ -216,11 +216,24 @@ class ProfilerTest(TestCase):
         report = Profiler.get_report()
         root = report[0]
         self.assertEqual('get_bill', root.name)
-        self.assertEqual(('apples',), root.func_args)
-        self.assertDictContainsSubset({'quantity': 3}, root.func_kwargs)
+        self.assertEqual(['apples'], root.func_args)
+        self.assertDictContainsSubset({'quantity': '3'}, root.func_kwargs)
 
         self.assertEqual('get_price', root.children[0].name)
-        self.assertEqual((3,), root.children[0].func_args)
+        self.assertEqual(['3'], root.children[0].func_args)
+
+    def test_func_args_converted_to_strings(self):
+
+        @profiled
+        def object_function(obj, key=None):
+            pass
+
+        object_function({1, 2, 3, 4, 5}, key=[1, 2])
+
+        report = Profiler.get_report()
+        root = report[0]
+        self.assertIsInstance(root.func_args[0], basestring)
+        self.assertIsInstance(root.func_kwargs['key'], basestring)
 
     def test_same_function_called_multiple_times(self):
 
