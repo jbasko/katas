@@ -10,13 +10,15 @@ import time
 class ProfilerRecord(object):
 
     def __init__(self, name, start_time, end_time,
-                 func_args=None, func_kwargs=None):
+                 func_args=None, func_kwargs=None,
+                 exception_raised=None):
         self.name = name
         self.start_time = start_time
         self.end_time = end_time
         self.children = []
         self.func_args = [str(a) for a in func_args]
         self.func_kwargs = {str(k): str(v) for k, v in func_kwargs.items()}
+        self.exception_raised = exception_raised
 
     def __repr__(self):
         args_repr = []
@@ -88,8 +90,10 @@ def profiled(f):
     @wraps(f)
     def profiled_func(*args, **kwargs):
         f.start_time = time.clock()
+        exception_raised = True
         try:
             response = f(*args, **kwargs)
+            exception_raised = False
             return response
         finally:
             f.end_time = time.clock()
@@ -99,7 +103,8 @@ def profiled(f):
             else:
                 reported_args = args
             Profiler.add_record(ProfilerRecord(f.__name__, f.start_time, f.end_time,
-                                               func_args=reported_args, func_kwargs=kwargs))
+                                               func_args=reported_args, func_kwargs=kwargs,
+                                               exception_raised=exception_raised))
 
     return profiled_func
 
@@ -284,16 +289,29 @@ class ProfilerTest(TestCase):
     def test_function_raises_exception(self):
 
         @profiled
+        def successful_function():
+            pass
+
+        @profiled
         def failing_function():
+            successful_function()
             raise RuntimeError()
 
-        try:
+        @profiled
+        def wrapping_function():
             failing_function()
+
+        try:
+            wrapping_function()
         except RuntimeError:
             pass
 
         report = Profiler.get_report()
         self.assertEqual(1, len(report))
+
+        self.assertTrue(report[0].exception_raised)
+        self.assertTrue(report[0].children[0].exception_raised)
+        self.assertFalse(report[0].children[0].children[0].exception_raised)
 
     def test_profiler_can_be_flushed(self):
 
