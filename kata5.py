@@ -211,3 +211,25 @@ class ProfilerTest(TestCase):
         self.assertEqual('get_price', root.children[0].name)
         self.assertEqual((3,), root.children[0].func_args)
 
+    def test_same_function_called_multiple_times(self):
+
+        @profiled
+        def common_function(key=None):
+            pass
+
+        common_function(key='first')
+        common_function(key='second')
+        common_function(key='third')
+
+        report = Profiler.get_report()
+        self.assertEqual(3, len(report))
+
+        self.assertEqual('first', report[0].func_kwargs['key'])
+        self.assertEqual('second', report[1].func_kwargs['key'])
+        self.assertEqual('third', report[2].func_kwargs['key'])
+
+        self.assertLess(report[0].start_time, report[1].start_time)
+        self.assertLess(report[1].start_time, report[2].start_time)
+        
+        self.assertLess(report[0].end_time, report[1].end_time)
+        self.assertLess(report[1].end_time, report[2].end_time)
