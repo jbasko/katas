@@ -50,10 +50,13 @@ class Profiler(object):
 
         records = sorted(Profiler._records, key=record_start_time)
 
-        if len(records) == 1:
-            return records[0]
+        if not records:
+            return []
 
-        root = [records[0]]
+        if len(records) == 1:
+            return [records[0]]
+
+        report = [records[0]]
         for i in range(1, len(records)):
             if records[i].start_time < records[i - 1].end_time:
                 # Is a child of the previous record
@@ -69,9 +72,9 @@ class Profiler(object):
                         parent_found = True
                         break
                 if not parent_found:
-                    root.append(records[i])
+                    report.append(records[i])
 
-        return root
+        return report
 
 
 def profiled(f):
@@ -79,11 +82,13 @@ def profiled(f):
     @wraps(f)
     def profiled_func(*args, **kwargs):
         f.start_time = time.clock()
-        response = f(*args, **kwargs)
-        f.end_time = time.clock()
-        Profiler.add_record(ProfilerRecord(f.__name__, f.start_time, f.end_time,
-                                           func_args=args, func_kwargs=kwargs))
-        return response
+        try:
+            response = f(*args, **kwargs)
+            return response
+        finally:
+            f.end_time = time.clock()
+            Profiler.add_record(ProfilerRecord(f.__name__, f.start_time, f.end_time,
+                                               func_args=args, func_kwargs=kwargs))
 
     return profiled_func
 
@@ -233,3 +238,35 @@ class ProfilerTest(TestCase):
         
         self.assertLess(report[0].end_time, report[1].end_time)
         self.assertLess(report[1].end_time, report[2].end_time)
+
+    def test_get_report_returns_empty_list_when_no_profiles_were_collected(self):
+        report = Profiler.get_report()
+        self.assertIsInstance(report, list)
+        self.assertEqual(0, len(report))
+
+    def test_one_record_report_ok(self):
+
+        @profiled
+        def hello():
+            pass
+
+        hello()
+
+        report = Profiler.get_report()
+        self.assertIsInstance(report, list)
+        self.assertEqual(1, len(report))
+        self.assertEqual('hello', report[0].name)
+
+    def test_function_raises_exception(self):
+
+        @profiled
+        def failing_function():
+            raise RuntimeError()
+
+        try:
+            failing_function()
+        except RuntimeError:
+            pass
+
+        report = Profiler.get_report()
+        self.assertEqual(1, len(report))
