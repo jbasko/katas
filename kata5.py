@@ -93,8 +93,13 @@ def profiled(f):
             return response
         finally:
             f.end_time = time.clock()
+            if args and hasattr(args[0], f.__name__) and callable(getattr(args[0], f.__name__)):
+                # This is a heuristic check whether the first arg is 'self'
+                reported_args = args[1:]
+            else:
+                reported_args = args
             Profiler.add_record(ProfilerRecord(f.__name__, f.start_time, f.end_time,
-                                               func_args=args, func_kwargs=kwargs))
+                                               func_args=reported_args, func_kwargs=kwargs))
 
     return profiled_func
 
@@ -315,3 +320,19 @@ class ProfilerTest(TestCase):
         Profiler.flush_report()
         self.assertEqual(0, len(Profiler.get_report()))
 
+    def test_class_function(self):
+
+        class MyClass(object):
+
+            @profiled
+            def class_function(self, name, key=None):
+                pass
+
+        c = MyClass()
+        c.class_function('My Call', key=23)
+
+        report = Profiler.get_report()
+        self.assertEqual(1, len(report))
+        self.assertEqual('class_function', report[0].name)
+        self.assertEqual(['My Call'], report[0].func_args)
+        self.assertDictContainsSubset({'key': '23'}, report[0].func_kwargs)
