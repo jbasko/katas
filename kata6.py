@@ -3,6 +3,8 @@
     Given a list of profiling records for nested function calls
     with each record containing start_time and end_time,
     work out the nesting of records.
+    
+    (THIS WAS WRITTEN AS SUBTASK FOR kata5.py)
 
     >>> records = [{'start_time': 2, 'end_time': 9}, {'start_time': 1, 'end_time': 10}]
     >>> make_report(records)
