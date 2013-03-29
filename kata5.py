@@ -9,11 +9,14 @@ import time
 
 class ProfilerRecord(object):
 
-    def __init__(self, name, start_time, end_time):
+    def __init__(self, name, start_time, end_time,
+                 func_args=None, func_kwargs=None):
         self.name = name
         self.start_time = start_time
         self.end_time = end_time
         self.children = []
+        self.func_args=func_args
+        self.func_kwargs=func_kwargs
 
     def __repr__(self):
         return '{}: {} {} {} {}'.format(self.__class__.__name__, self.name,
@@ -72,7 +75,8 @@ def profiled(f):
         f.start_time = time.clock()
         response = f(*args, **kwargs)
         f.end_time = time.clock()
-        Profiler.add_record(ProfilerRecord(f.__name__, f.start_time, f.end_time))
+        Profiler.add_record(ProfilerRecord(f.__name__, f.start_time, f.end_time,
+                                           func_args=args, func_kwargs=kwargs))
         return response
 
     return profiled_func
@@ -179,3 +183,22 @@ class ProfilerTest(TestCase):
         self.assertEqual('function2', report[1].name)
         self.assertEqual(1, len(report[1].children))
         self.assertEqual('function2_sub', report[1].children[0].name)
+
+    def test_profile_includes_func_args(self):
+
+        @profiled
+        def get_price(quantity):
+            return quantity * 5.0
+
+        @profiled
+        def get_bill(product_name, quantity=1):
+            return '{} {}: {}'.format(quantity, product_name, get_price(quantity))
+
+        get_bill('apples', quantity=3)
+
+        report = Profiler.get_report()
+        root = report[0]
+        self.assertEqual('get_bill', root.name)
+        self.assertEqual(('apples',), root.func_args)
+        self.assertDictContainsSubset({'quantity': 3}, root.func_kwargs)
+
