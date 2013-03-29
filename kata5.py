@@ -19,9 +19,15 @@ class ProfilerRecord(object):
         self.func_kwargs=func_kwargs
 
     def __repr__(self):
-        return '{}: {} {} {} {}'.format(self.__class__.__name__, self.name,
-                                        self.start_time, self.end_time,
-                                        self.children)
+        args_repr = []
+        if self.func_args:
+            args_repr.append(str(self.func_args))
+        if self.func_kwargs:
+            args_repr.append(str(self.func_kwargs))
+        return '{}: {} {} {} {} {}'.format(self.__class__.__name__, self.name,
+                                           ', '.join(args_repr),
+                                           self.start_time, self.end_time,
+                                           self.children)
 
 
 class Profiler(object):
@@ -201,4 +207,7 @@ class ProfilerTest(TestCase):
         self.assertEqual('get_bill', root.name)
         self.assertEqual(('apples',), root.func_args)
         self.assertDictContainsSubset({'quantity': 3}, root.func_kwargs)
+
+        self.assertEqual('get_price', root.children[0].name)
+        self.assertEqual((3,), root.children[0].func_args)
 
