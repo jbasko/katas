@@ -210,5 +210,5 @@ class RoverTest(TestCase):
         rover.command('F')
         self.assertTrue(world.has_rover_at([1, 0]))
         self.assertFalse(world.has_rover_at([0, 0]))
-        
+
 
