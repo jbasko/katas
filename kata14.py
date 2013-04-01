@@ -16,6 +16,7 @@
 """
 
 from collections import Counter
+import itertools
 
 
 def frequencies(s):
@@ -33,6 +34,14 @@ def _perms(chars):
             p.append(c + tail)
     return p
 
-def permutations(s):
+
+def my_permutations(s):
     chars = set(s)
     return sorted(_perms(chars))
+
+
+def permutations(s):
+    perms = []
+    for p in itertools.permutations(s):
+        perms.append(''.join([str(c) for c in p]))
+    return perms
