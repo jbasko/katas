@@ -1,5 +1,5 @@
 """
-    Find the length of longest montonous contiguous substring.
+    Find the length of longest monotonous contiguous substring.
     2013-03-26 morning
 """
 
